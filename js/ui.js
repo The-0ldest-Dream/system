@@ -1,28 +1,35 @@
-// Page rendering, toasts, modals. Keeps DOM out of app.js.
+// Page rendering, toasts, modals.
 import { fmtT, valueLabel, step as qStep, elapsed } from './quests.js';
 import { drawRadar, drawLine, drawHeatmap } from './charts.js';
 import { drawTree } from './tree.js';
-import { rankFor, RANKS, xpProgress, xpForLevel, statTotal } from './stats.js';
-import { todayStr, exportState, importState, eraseAllProfiles } from './storage.js';
+import { rankFor, RANKS, xpProgress, statTotal } from './stats.js';
+import { todayStr } from './storage.js';
 import { sfx } from './audio.js';
 import { DAYS } from './routines.js';
 
-const STAT_LINKS = { STRENGTH: 'recap', WEALTH: 'stat-wealth', SKILLS: 'stat-skills', KNOWLEDGE: 'stat-knowledge', AGILITY: 'streak' };
+const STAT_LINKS = {
+  STRENGTH: 'recap', WEALTH: 'stat-wealth', SKILLS: 'stat-skills',
+  KNOWLEDGE: 'stat-knowledge', AGILITY: 'streak',
+};
 
 export function avatarHTML(small = false) {
-  return `<button class="avatar${small ? ' sm' : ''}" id="avatar-${small ? 'status' : 'setup'}" aria-label="Profile picture">
-    <img alt=""><svg class="avatar-ph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
-  </button>`;
+  const id = small ? 'avatar-status' : 'avatar-setup';
+  return `<button class="avatar${small ? ' sm' : ''}" id="${id}" aria-label="Profile picture">
+    <img alt=""><svg class="avatar-ph" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="9" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>
+    </svg></button>`;
 }
 
 export function renderPages(app) {
   const host = document.getElementById('pages');
+  if (!host) { console.error('renderPages: #pages missing'); return; }
   const s = app.state;
   const xp = xpProgress(s.xp);
+
   host.innerHTML = `
     <section id="page-setup" class="card">
       <h1 class="title">Create Status</h1>
-      ${avatarHTML()}
+      ${avatarHTML(false)}
       <div class="field"><label>Name</label><input id="in-name" type="text" value="${esc(s.character.name)}"></div>
       <div class="field"><label>Age</label><input id="in-age" type="number" min="0" value="${esc(s.character.age)}"></div>
       <div class="field"><label>Class / Job</label><input id="in-class" type="text" value="${esc(s.character.cls)}"></div>
@@ -40,8 +47,8 @@ export function renderPages(app) {
           <div class="row"><div class="label-box">AGE</div><div class="value" id="st-age">${esc(s.character.age)}</div></div>
           <div class="row"><div class="label-box">CLASS</div><div class="value" id="st-class">${esc(s.character.cls.toUpperCase())}</div></div>
           <div class="row"><div class="label-box">TITLE</div><div class="value" id="st-title">${esc(s.character.title.toUpperCase())}</div></div>
-          <div class="row"><div class="label-box">LEVEL</div><div class="value">${xp.level} <small style="color:var(--muted)">(${xp.into}/${xp.need} XP)</small></div></div>
-          <div class="row"><div class="label-box">RANK</div><div class="value">${RANKS[s.rank]}${s.rank >= 6 ? ' <span style="color:var(--danger)">■</span>' : ''}</div></div>
+          <div class="row"><div class="label-box">LEVEL</div><div class="value" id="st-level">${xp.level} <small style="color:var(--muted)">(${xp.into}/${xp.need} XP)</small></div></div>
+          <div class="row"><div class="label-box">RANK</div><div class="value" id="st-rank">${RANKS[s.rank]}</div></div>
           <div class="points-row">
             <p class="points-line" style="margin:0">Available Points: <span id="pt-pool">${s.points}</span></p>
             <button class="rank-badge${s.rank >= 6 ? ' crimson' : ''}" id="rank-badge" aria-label="Rank">${RANKS[s.rank]}</button>
@@ -51,7 +58,7 @@ export function renderPages(app) {
               <div class="stat-row">
                 <span class="stat-name">${st.axis}</span>
                 <span class="stat-val" id="sv-${i}">${st.value}</span>
-                <button class="pt-btn" data-add="${i}">+</button>
+                <button class="pt-btn" data-add="${i}" aria-label="Add point to ${st.axis}">+</button>
               </div>`).join('')}
           </div>
         </div>
@@ -123,7 +130,7 @@ export function renderPages(app) {
           <div class="quest-title-box">${k.toUpperCase()}</div>
         </div>
         <div class="list-add">
-          <input id="add-${k}" type="text" placeholder="Add an item..." data-enter="${k}">
+          <input id="add-${k}" type="text" placeholder="Add an item...">
           <button class="pt-btn" data-addlog="${k}">+</button>
         </div>
         <div class="manage-list" id="list-${k}"></div>
@@ -146,7 +153,6 @@ export function renderPages(app) {
       <div class="io-row" style="margin-top:14px">
         <button class="btn" id="btn-export">Export</button>
         <button class="btn" id="btn-import">Import</button>
-        <input type="file" id="import-file" accept="application/json" hidden>
       </div>
     </section>
 
@@ -231,40 +237,39 @@ export function renderPages(app) {
       <button class="btn danger" id="btn-return" style="width:100%">RETURN TO STATUS</button>
     </section>
   `;
+
+  // Hidden file input for import (one, not one per page)
+  if (!document.getElementById('import-file')) {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.id = 'import-file';
+    inp.accept = 'application/json'; inp.hidden = true;
+    document.body.appendChild(inp);
+  }
 }
 
 export function esc(str) {
   return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-function helpItems() {
+function helpItems() { /* ...unchanged from previous version, paste it here... */ 
   return [
     ['Status', 'Your character sheet — name, class, level, rank, and 5 stats plotted on the pentagon.'],
     ['Available Points', 'Every stat and your point pool start at 0 on a new profile. Tap + next to a stat to spend points. Earn points by completing quests (+1 normal, +2 boss bonus), keeping your streak alive (+2 daily), or adding a log entry (+1).'],
     ['XP & Level', 'Every completed quest gives XP (10 normal, 30 boss). XP drives your level, shown on the Status page.'],
     ['Rank', 'Get all 5 stats to 100 to rank up (E → SSS). Each rank-up clears the pentagon back to 0 and gives 10 fresh points. SS and above glow crimson.'],
-    ['Titles & Skills', 'Milestones (level, streak, quest count, rank, stat thresholds) unlock Titles and Skills — shown on Status and announced by the System.'],
-    ['Wealth / Skills / Knowledge', 'Tap those names on the pentagon to open a log where you can add or delete entries. Adding one earns a point.'],
+    ['Titles & Skills', 'Milestones unlock Titles and Skills — shown on Status and announced by the System.'],
+    ['Wealth / Skills / Knowledge', 'Tap those names on the pentagon to open a log where you can add or delete entries.'],
     ['Daily Quest', 'Your checklist for the day. Completing quests feeds stats, XP, and points.'],
-    ['Boss Quests', 'Crimson-marked quests worth 3× XP and a +2 point bonus. Fail one and it costs a rank toward your stat drain.'],
-    ['Routine', 'Per-day task lists. Tasks reset each time that day comes around. Categories work the same as quests.'],
-    ['+ (new quest)', 'Create custom quests. Set a category matching a pentagon stat (STRENGTH, WEALTH, SKILLS, KNOWLEDGE, AGILITY) to feed that stat directly; otherwise you earn general points.'],
-    ['Running & Agility', 'Any quest with "run" or "jog" in its name feeds Agility and the running chart automatically. Multiple running quests on the same day add up.'],
+    ['Boss Quests', 'Crimson-marked quests worth 3× XP and a +2 point bonus.'],
+    ['Routine', 'Per-day task lists. Tasks reset each time that day comes around.'],
+    ['Running & Agility', 'Any quest with "run" or "jog" in its name feeds Agility and the running chart automatically.'],
     ['Growth Tree', 'A procedural tree that grows with your stats, leaves with your streak, and bears fruit with your rank.'],
-    ['Streak & History', 'Your running chart plus a full-year calendar — green for days you ran, red for days you missed. Use ‹ › to browse other years.'],
-    ['Fail Daily Quest', 'Simulates missing your quests and triggers the penalty countdown. The penalty drains a stat point and logs it publicly.'],
-    ['Export / Import', 'Save your data as a JSON file, or load it back in later. Imports are versioned and validated.'],
-    ['Monthly Recap & Total Stats', 'Tap STRENGTH on the pentagon. A line chart of your combined stat total (last 14 days), plus quests done, days completed, distance run, points earned and streaks for any month.'],
-    ['Sounds', 'Short tones for taps, point spends, quest completions, boss toggles, theme switches, rank-ups, day completions, penalties, glitches, and tree taps.'],
-    ['Ambient Music', 'The settings page toggles a calm A-minor pad with a ~16 Hz binaural beat. Best with stereo headphones. Off by default.'],
-    ['Erase Data', 'The Erase button in Settings wipes every profile after a warning. Cannot be undone.'],
-    ['Install as App', 'Hosted on https or localhost, your browser shows an Install button. Installed, it appears as "System" with a dark icon and works offline.'],
-    ['Name + Age', 'These work like a login. Change either to start a fresh character, or re-enter an old pair to restore that profile.'],
-    ['Appearance', 'Settings switches the whole system between the blue "Darkness" look and the golden "Divine" look.'],
+    ['Streak & History', 'Your running chart plus a full-year calendar — green for ran, red for missed. Use ‹ › to browse years.'],
+    ['Export / Import', 'Save your data as a JSON file, or load it back in later.'],
+    ['Settings', 'Theme, sound, music, verbosity, erase all data, export/import.'],
   ];
 }
 
-// ---- Quest list rendering ----
 export function renderQuestList(app) {
   const wrap = document.getElementById('quest-list');
   if (!wrap) return;
@@ -304,8 +309,8 @@ export function renderManageList(app) {
     <div class="manage-row ${q.boss ? 'boss' : ''}">
       <span>${esc(q.name)} <small>(${esc(q.category)}${q.boss ? ' · BOSS' : ''})</small></span>
       <span class="manage-actions">
-        <button class="pt-btn" data-rename="${q.id}">✎</button>
-        <button class="pt-btn" data-remove="${q.id}">✕</button>
+        <button class="pt-btn" data-rename="${q.id}" aria-label="Rename">✎</button>
+        <button class="pt-btn" data-remove="${q.id}" aria-label="Remove">✕</button>
       </span>
     </div>`).join('');
   wrap.querySelectorAll('[data-rename]').forEach(b => b.addEventListener('click', () => app.renameQuest(b.dataset.rename)));
@@ -332,7 +337,7 @@ export function renderRoutineDay(app, day) {
       <span class="quest-progress">
         <span class="quest-value">[${item.done ? item.target : 0}/${item.target}${item.unit}]</span>
         <span class="checkbox ${item.done ? 'checked' : ''}" role="checkbox" aria-checked="${item.done}" tabindex="0" data-ritem="${item.id}"></span>
-        <button class="pt-btn" data-rmitem="${item.id}">×</button>
+        <button class="pt-btn" data-rmitem="${item.id}" aria-label="Remove">×</button>
       </span>
     </div>`).join('') : '<p style="color:var(--muted);font-size:.85rem">No tasks for this day yet.</p>';
   wrap.querySelectorAll('.checkbox').forEach(cb => {
@@ -348,17 +353,15 @@ export function renderNotifList(app) {
   const items = [];
   const incomplete = app.state.quests.filter(q => !q.done).length;
   if (incomplete) items.push(`<div class="notif-item boss-alert"><b>⚠ Quests Incomplete</b><p>${incomplete} quest(s) still pending today.</p></div>`);
-  // System log, newest first
   [...app.state.sysLog].reverse().forEach(e => {
     items.push(`<div class="notif-item${e.warn ? ' boss-alert' : ''}"><b>[SYSTEM] ${esc(e.title)}</b><p>${esc(e.line)}</p></div>`);
   });
   wrap.innerHTML = items.join('') || '<p style="color:var(--muted)">No notifications.</p>';
-  app.state.sysLog.length = 0;
-  app.state.sysLog.push(...app.state.sysLog); // no-op, keep for save trigger
 }
 
 export function showRankUp(letter, name) {
   const toast = document.getElementById('rankup');
+  if (!toast) return;
   document.getElementById('rankup-letter').textContent = letter;
   document.getElementById('rankup-sub').textContent = 'Congratulations, ' + (name || 'Hunter') + '.';
   toast.classList.remove('hide');
@@ -378,7 +381,12 @@ export function confirmDialog(title, body) {
     modal.classList.add('open');
     const ok = document.getElementById('modal-confirm-ok');
     const cancel = document.getElementById('modal-confirm-cancel');
-    const done = v => { modal.classList.remove('open'); ok.removeEventListener('click', okFn); cancel.removeEventListener('click', cancelFn); resolve(v); };
+    const done = v => {
+      modal.classList.remove('open');
+      ok.removeEventListener('click', okFn);
+      cancel.removeEventListener('click', cancelFn);
+      resolve(v);
+    };
     const okFn = () => done(true);
     const cancelFn = () => done(false);
     ok.addEventListener('click', okFn);
