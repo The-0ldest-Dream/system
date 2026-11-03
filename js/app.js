@@ -847,4 +847,17 @@ class App {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => new App());
+window.addEventListener('DOMContentLoaded', () => {
+  try {
+    new App();
+  } catch (err) {
+    console.error('Boot failed:', err);
+    // Hide splash so the user sees the real error instead of a stuck screen
+    const sp = document.getElementById('splash');
+    if (sp) { sp.classList.add('hide'); setTimeout(() => sp.classList.add('gone'), 600); }
+    document.body.insertAdjacentHTML('beforeend',
+      `<div style="position:fixed;inset:0;z-index:9999;background:#000;color:#ff5577;
+        font:14px/1.5 monospace;padding:24px;overflow:auto;white-space:pre-wrap">
+        <b>Boot error:</b>\n\n${err && err.stack ? err.stack : err}</div>`);
+  }
+});
