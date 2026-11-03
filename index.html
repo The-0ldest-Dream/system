@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<title>System</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<div class="scanlines" aria-hidden="true"></div>
+
+<!-- Splash -->
+<div class="splash" id="splash">
+  <div class="splash-half top"></div>
+  <div class="splash-half bottom"></div>
+  <div class="splash-text">SYSTEM</div>
+</div>
+
+<!-- The System's live alert window -->
+<div class="sys-alert" id="sys-alert" role="alertdialog" aria-live="assertive" aria-modal="false">
+  <div class="sys-alert-head"><span>[ SYSTEM ]</span><i></i><span class="sys-alert-kind" id="sys-alert-kind">INFO</span></div>
+  <div class="sys-alert-body">
+    <h2 id="sys-alert-title">Message</h2>
+    <div id="sys-alert-lines"></div>
+    <button id="sys-alert-ok" class="btn">ACKNOWLEDGE</button>
+  </div>
+</div>
+
+<!-- Confirm modal -->
+<div class="modal" id="modal-confirm">
+  <div class="modal-box">
+    <h3 id="modal-confirm-title">Are you sure?</h3>
+    <p id="modal-confirm-body"></p>
+    <div class="modal-actions">
+      <button class="btn ghost" id="modal-confirm-cancel">Cancel</button>
+      <button class="btn danger" id="modal-confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Profile picture editor -->
+<div class="modal" id="modal-avatar">
+  <div class="modal-box">
+    <h3>Profile picture</h3>
+    <div class="avatar-crop" id="avatar-crop">
+      <img id="avatar-img" alt="" draggable="false">
+      <span class="avatar-empty" id="avatar-empty">No photo</span>
+    </div>
+    <p class="hint">Drag to move · scroll or slider to zoom</p>
+    <input type="range" id="avatar-zoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom">
+    <div class="modal-actions">
+      <button class="btn ghost" id="avatar-pick">Choose</button>
+      <button class="btn ghost" id="avatar-remove">Remove</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="avatar-cancel">Cancel</button>
+      <button class="btn" id="avatar-save">Save</button>
+    </div>
+    <input type="file" id="avatar-file" accept="image/*" hidden>
+  </div>
+</div>
+
+<!-- Rank-up toast -->
+<div class="rankup" id="rankup" aria-live="polite">
+  <p class="rankup-label">RANK UP</p>
+  <div class="rankup-letter" id="rankup-letter">D</div>
+  <p class="rankup-sub" id="rankup-sub">Congratulations, Hunter.</p>
+</div>
+
+<!-- Persistent top bar -->
+<header class="topbar" id="topbar">
+  <button class="icon-btn" id="btn-settings" title="Settings" aria-label="Settings">⚙</button>
+  <button class="icon-btn" id="btn-notif" title="Notifications" aria-label="Notifications">
+    <span class="notif-dot" id="notif-dot" hidden></span>!
+  </button>
+</header>
+
+<!-- Main scene -->
+<main class="scene" id="scene">
+  <svg class="hud" id="hud" aria-hidden="true"></svg>
+  <div class="side-bar left" aria-hidden="true"></div>
+  <div class="side-bar right" aria-hidden="true"></div>
+
+  <!-- Dock (only on status) -->
+  <nav class="dock" id="dock" aria-label="Quick actions">
+    <button data-page="quest">Daily Quest</button>
+    <button data-page="quest-create" class="d-plus" aria-label="New quest">+</button>
+    <button data-page="tree">Tree</button>
+    <button data-page="routine">Routine</button>
+  </nav>
+
+  <!-- Pages injected here -->
+  <div id="pages"></div>
+</main>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
